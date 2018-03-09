@@ -14,7 +14,7 @@ limitations under the License.
 ==============================================================================*/
 
 // See docs in ../ops/image_ops.cc
-
+//WK:Import header files..keep
 #define EIGEN_USE_THREADS
 
 #include "tensorflow/core/kernels/crop_and_resize_op.h"
@@ -33,7 +33,7 @@ limitations under the License.
 #include "tensorflow/core/platform/logging.h"
 #include "tensorflow/core/platform/types.h"
 #include "tensorflow/core/util/work_sharder.h"
-
+//WK: Use this if got use gpu...keep
 #if GOOGLE_CUDA
 #include "tensorflow/core/common_runtime/gpu/gpu_event_mgr.h"
 #include "tensorflow/core/platform/cuda.h"
@@ -41,15 +41,15 @@ limitations under the License.
 
 using ::perftools::gputools::cuda::ScopedActivateExecutorContext;
 #endif  // GOOGLE_CUDA
-
+//WK: use for tensorflow(custom for tensorflow , so will see tensorflow ::  
 namespace tensorflow {
-
+//WK:what this doing???
 typedef Eigen::ThreadPoolDevice CPUDevice;
 typedef Eigen::GpuDevice GPUDevice;
 using Callback = std::function<void()>;
 
 namespace {
-
+//WK:Use to check status on inputs, if not as required , return errors---keep
 static inline Status ParseAndCheckBoxSizes(const Tensor& boxes,
                                            const Tensor& box_index,
                                            int* num_boxes) {
