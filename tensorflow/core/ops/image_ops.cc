@@ -602,6 +602,68 @@ REGISTER_OP("CropAndResizeGradBoxes")
     });
 
 // --------------------------------------------------------------------------
+    
+using namespace tensorflow;
+REGISTER_OP("CropAndResizeQuad")
+    .Input("image: T")
+    .Input("boxes: float")
+    .Input("box_ind: int32")
+    .Input("crop_size: int32")
+    .Output("crops: float")
+    .Attr("T: {uint8, uint16, int8, int16, int32, int64, half, float, double}")
+    .Attr("method: {'biquadratic'} = 'biquadratic'")
+    .Attr("extrapolation_value: float = 0")
+    .SetShapeFn([](InferenceContext* c) {
+      // Get inputs and validate ranks.
+      ShapeHandle input;
+      TF_RETURN_IF_ERROR(c->WithRank(c->input(0), 4, &input));
+      ShapeHandle boxes;
+      TF_RETURN_IF_ERROR(c->WithRank(c->input(1), 2, &boxes));
+      ShapeHandle box_ind;
+      TF_RETURN_IF_ERROR(c->WithRank(c->input(2), 1, &box_ind));
+
+      // boxes[0] and box_ind[0] are both num_boxes.
+      DimensionHandle num_boxes_dim;
+      TF_RETURN_IF_ERROR(
+          c->Merge(c->Dim(boxes, 0), c->Dim(box_ind, 0), &num_boxes_dim));
+
+      // boxes.dim(1) is 4.
+      DimensionHandle unused;
+      TF_RETURN_IF_ERROR(c->WithValue(c->Dim(boxes, 1), 4, &unused));
+
+      return SetOutputToSizedImage(c, num_boxes_dim, 3 /* size_input_idx */,
+                                   c->Dim(input, 3));
+    });
+
+REGISTER_OP("CropAndResizeQuadGradImage")
+    .Input("grads: float")
+    .Input("boxes: float")
+    .Input("box_ind: int32")
+    .Input("image_size: int32")
+    .Output("output: T")
+    .Attr("T: {float, half, double}")
+    .Attr("method: {'biquadratic'} = 'biquadratic'")
+    .SetShapeFn([](InferenceContext* c) {
+      ShapeHandle out;
+      TF_RETURN_IF_ERROR(c->MakeShapeFromShapeTensor(3, &out));
+      TF_RETURN_IF_ERROR(c->WithRank(out, 4, &out));
+      c->set_output(0, out);
+      return Status::OK();
+    });
+
+REGISTER_OP("CropAndResizeQuadGradBoxes")
+    .Input("grads: float")
+    .Input("image: T")
+    .Input("boxes: float")
+    .Input("box_ind: int32")
+    .Output("output: float")
+    .Attr("T: {uint8, uint16, int8, int16, int32, int64, half, float, double}")
+    .Attr("method: {'biquadratic'} = 'biquadratic'")
+    .SetShapeFn([](InferenceContext* c) {
+      c->set_output(0, c->input(2));
+      return Status::OK();
+    });
+// --------------------------------------------------------------------------
 
 REGISTER_OP("NonMaxSuppression")
     .Input("boxes: float")
