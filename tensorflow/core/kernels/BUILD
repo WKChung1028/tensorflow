@@ -2048,6 +2048,12 @@ tf_kernel_library(
 )
 
 tf_kernel_library(
+    name = "crop_and_resize_quad_op",
+    prefix = "crop_and_resize_quad_op",
+    deps = IMAGE_DEPS,
+)
+
+tf_kernel_library(
     name = "decode_bmp_op",
     prefix = "decode_bmp_op",
     deps = IMAGE_DEPS,
@@ -2196,7 +2202,7 @@ tf_cc_tests(
         "adjust_contrast_op_test.cc",
         "colorspace_op_test.cc",
         "crop_and_resize_op_test.cc",
-        ":crop_and_resize_quad_op_test",
+        "crop_and_resize_quad_op_test",
         "non_max_suppression_op_test.cc",
         "resize_area_op_test.cc",
         "resize_bicubic_op_test.cc",
@@ -4829,6 +4835,8 @@ filegroup(
         "conv_ops_using_gemm.cc",
         "crop_and_resize_op.cc",
         "crop_and_resize_op.h",
+        "crop_and_resize_quad_op.cc",
+        "crop_and_resize_quad_op.h",
         "cwise_op_abs.cc",
         "cwise_op_add_1.cc",
         "cwise_op_add_2.cc",
