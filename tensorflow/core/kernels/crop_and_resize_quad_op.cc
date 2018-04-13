@@ -290,10 +290,10 @@ struct CropAndResizeQuad<CPUDevice, T> {
               const float bot_right(static_cast<float>(
                   image(b_in, bot_mid_y, right_mid_x, d)));
       
-             const float CA = (top_mid)+(top_right - top_left)*(x_lerp)+(top_left - (2*top_mid)+top_right)*pow(x_lerp,2);
-             const float CB = (mid_mid)+(mid_right – mid_left)*(x_lerp)+(mid_left - (2*mid_mid)+mid_right)*pow(x_lerp,2);
-             const float CC =(bot_mid)+(bot_right – mid_left)*(x_lerp)+(bot_left - (2*bot_mid)+bot_right)*pow(x_lerp,2);
-             const float crops(b,y,x,d) = (CB)+(CC– CA)*(y_lerp)+(CA - (2*CB)+CC)*pow(y_lerp,2);
+              const float CA = (top_mid)+(top_right - top_left)*(x_lerp)+(top_left - (2*top_mid)+top_right)*pow(x_lerp,2);
+              const float CB = (mid_mid)+(mid_right – mid_left)*(x_lerp)+(mid_left - (2*mid_mid)+mid_right)*pow(x_lerp,2);
+              const float CC =(bot_mid)+(bot_right – mid_left)*(x_lerp)+(bot_left - (2*bot_mid)+bot_right)*pow(x_lerp,2);
+              crops(b,y,x,d) = (CB)+(CC– CA)*(y_lerp)+(CA - (2*CB)+CC)*pow(y_lerp,2);
 
             }
           }
@@ -458,8 +458,10 @@ struct CropAndResizeQuadBackpropImage<CPUDevice, T> {
         const int top_mid_y= floorf(in_y)-1;
         const int bot_mid_y= ceilf(in_y);
         const float y_lerp = in_y - mid_mid_y;
+          
+          
         for (int x = 0; x < crop_width; ++x) {
-           const float in_x = (crop_width > 1)
+          const float in_x = (crop_width > 1)
                                  ? x1 * (image_width - 1) + x * width_scale
                                  : 0.5 * (x1 + x2) * (image_width - 1);
           if (in_x < 0 || in_x > image_width - 1) {
@@ -483,8 +485,7 @@ struct CropAndResizeQuadBackpropImage<CPUDevice, T> {
             grads_image(b_in, mid_mid_y, mid_mid_x, d) += static_cast<T>(dgrad*((1+ 0.5*x_lerp – xsqua +0.5*x_lerp*ysqua) + ysqua*(1 + 0.5*x_lerp - xsqua)));
             grads_image(b_in, mid_mid_y, right_mid_x,d)+= static_cast<T>(0.5*dgrad*(xsqua*ysqua  + xsqua));
 
-           grads_image(b_in, bot_mid_y, left_mid_x, d) +=
-                static_cast<T>(0.25*dgrad*(xsqua*ysqua + xsqua*ylerp – x_lerp*y_lerp));
+            grads_image(b_in, bot_mid_y, left_mid_x, d) += static_cast<T>(0.25*dgrad*(xsqua*ysqua + xsqua*ylerp – x_lerp*y_lerp));
             grads_image(b_in, bot_mid_y, mid_mid_x, d) += static_cast<T>(0.5*dgrad*(y_lerp*(1 + 0.5*x_lerp - xsqua) + ysqua(1+0.5*x_lerp -xsqua)));
             grads_image(b_in, bot_mid_y, right_mid_x,d)+= static_cast<T>(0.25*dgrad*(xsqua*ysqua  + xsqua*y_lerp));
 
@@ -677,11 +678,11 @@ struct CropAndResizeQuadBackpropBoxes<CPUDevice, T> {
             float dA_x = 0.5*(top_mid - top_left) + x_lerp*(top_left - 2*top_mid + top_right);
             float dB_x = 0.5*(mid_mid - mid_left) + x_lerp*(mid_left - 2*mid_mid + mid_right);
             float dC_x = 0.5*(bot_mid - bot_left) + x_lerp*(bot_left - 2*bot_mid + bot_right);
-            CA = (top_mid)+(top_right - top_left)*(x_lerp)+(top_left - (2*top_mid)+top_right)*pow(x_lerp,2);
-            CB = (mid_mid)+(mid_right – mid_left)*(x_lerp)+(mid_left - (2*mid_mid)+mid_right)*pow(x_lerp,2);
-            CC = (bot_mid)+(bot_right – mid_left)*(x_lerp)+(bot_left - (2*bot_mid)+bot_right)*pow(x_lerp,2);
-           float  image_grad_x =  dB_x +0.5* (dC_x - dA_x)*y_lerp + 0.5*(dA_x + 2*dB_x + dC_x)*(pow(y_lerp,2));
-           float image_grad_y = 0.5*(CC - CA) + (CA + 2*CB +CC)*(y_lerp);
+            float CA = (top_mid)+(top_right - top_left)*(x_lerp)+(top_left - (2*top_mid)+top_right)*pow(x_lerp,2);
+            float CB = (mid_mid)+(mid_right – mid_left)*(x_lerp)+(mid_left - (2*mid_mid)+mid_right)*pow(x_lerp,2);
+            float CC = (bot_mid)+(bot_right – mid_left)*(x_lerp)+(bot_left - (2*bot_mid)+bot_right)*pow(x_lerp,2);
+            float  image_grad_x =  dB_x +0.5* (dC_x - dA_x)*y_lerp + 0.5*(dA_x + 2*dB_x + dC_x)*(pow(y_lerp,2));
+            float image_grad_y = 0.5*(CC - CA) + (CA + 2*CB +CC)*(y_lerp);
 
 
 
