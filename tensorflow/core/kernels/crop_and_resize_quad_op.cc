@@ -278,7 +278,7 @@ struct CropAndResizeQuad<CPUDevice, T> {
                   
               const float mid_left(static_cast<float>(
                   image(b_in, mid_mid_y, left_mid_x, d)));
-              const float top_mid(static_cast<float>(
+              const float mid_mid(static_cast<float>(
                   image(b_in, mid_mid_y, mid_mid_x, d)));
               const float mid_right(static_cast<float>(
                   image(b_in, mid_mid_y, right_mid_x, d)));
@@ -477,17 +477,17 @@ struct CropAndResizeQuadBackpropImage<CPUDevice, T> {
             const float dgrad = grads(b, y, x, d);
             const float xsqua = pow(x_lerp ,2);
             const float ysqua = pow(y_lerp,2);
-            grads_image(b_in, top_mid_y, left_mid_x, d) += static_cast<T>(0.25*dgrad*(x_lerp * y_lerp –(xsqua*y_lerp)-(x_lerp*ysqua)+(xsqua*ysqua)));
-            grads_image(b_in, top_mid_y, mid_mid_x, d) += static_cast<T>(0.5*dgrad*((1+ 0.5*x_lerp - xsqua) + ysqua*(1 + 0.5*x_lerp - xsqua)));
-            grads_image(b_in, top_mid_y, right_mid_x,d)+= static_cast<T>(0.25*dgrad*(xsqua*ysqua –xsqua*y_lerp));
+            grads_image(b_in, top_mid_y, left_mid_x, d) += static_cast<T>(0.25 * dgrad * (x_lerp * y_lerp – (xsqua * y_lerp) - (x_lerp * ysqua) + (xsqua * ysqua)));
+            grads_image(b_in, top_mid_y, mid_mid_x, d) += static_cast<T>(0.5 * dgrad * ((1 +  0.5 * x_lerp - xsqua) + ysqua * (1 + 0.5 * x_lerp - xsqua)));
+            grads_image(b_in, top_mid_y, right_mid_x,d)+= static_cast<T>(0.25 * dgrad * (xsqua * ysqua –xsqua * y_lerp));
 
-            grads_image(b_in, mid_mid_y, left_mid_x, d) += static_cast<T>(dgrad*(ysqua*(1+0.5*x_lerp -xsqua)-(0.5*(x_lerp + xsqua – x_lerp*ysqua))));
-            grads_image(b_in, mid_mid_y, mid_mid_x, d) += static_cast<T>(dgrad*((1+ 0.5*x_lerp – xsqua +0.5*x_lerp*ysqua) + ysqua*(1 + 0.5*x_lerp - xsqua)));
-            grads_image(b_in, mid_mid_y, right_mid_x,d)+= static_cast<T>(0.5*dgrad*(xsqua*ysqua  + xsqua));
+            grads_image(b_in, mid_mid_y, left_mid_x, d) += static_cast<T>(dgrad * (ysqua * (1 + 0.5 * x_lerp - xsqua) - (0.5 * (x_lerp + xsqua – x_lerp * ysqua))));
+            grads_image(b_in, mid_mid_y, mid_mid_x, d) += static_cast<T>(dgrad * ((1 + 0.5 * x_lerp – xsqua + 0.5 * x_lerp * ysqua) + ysqua * (1 + 0.5 * x_lerp - xsqua)));
+            grads_image(b_in, mid_mid_y, right_mid_x,d)+= static_cast<T>(0.5 * dgrad * (xsqua*ysqua  + xsqua));
 
-            grads_image(b_in, bot_mid_y, left_mid_x, d) += static_cast<T>(0.25*dgrad*(xsqua*ysqua + xsqua*ylerp – x_lerp*y_lerp));
-            grads_image(b_in, bot_mid_y, mid_mid_x, d) += static_cast<T>(0.5*dgrad*(y_lerp*(1 + 0.5*x_lerp - xsqua) + ysqua(1+0.5*x_lerp -xsqua)));
-            grads_image(b_in, bot_mid_y, right_mid_x,d)+= static_cast<T>(0.25*dgrad*(xsqua*ysqua  + xsqua*y_lerp));
+            grads_image(b_in, bot_mid_y, left_mid_x, d) += static_cast<T>(0.25 * dgrad * (xsqua * ysqua + xsqua * y_lerp – x_lerp * y_lerp));
+            grads_image(b_in, bot_mid_y, mid_mid_x, d) += static_cast<T>(0.5 * dgrad * (y_lerp * (1 + 0.5*x_lerp - xsqua) + ysqua * (1 + 0.5 * x_lerp - xsqua)));
+            grads_image(b_in, bot_mid_y, right_mid_x,d)+= static_cast<T>(0.25 * dgrad * (xsqua * ysqua  + xsqua * y_lerp));
 
             
           }
@@ -678,11 +678,11 @@ struct CropAndResizeQuadBackpropBoxes<CPUDevice, T> {
             float dA_x = 0.5*(top_mid - top_left) + x_lerp*(top_left - 2*top_mid + top_right);
             float dB_x = 0.5*(mid_mid - mid_left) + x_lerp*(mid_left - 2*mid_mid + mid_right);
             float dC_x = 0.5*(bot_mid - bot_left) + x_lerp*(bot_left - 2*bot_mid + bot_right);
-            float CA = (top_mid)+(top_right - top_left)*(x_lerp)+(top_left - (2*top_mid)+top_right)*pow(x_lerp,2);
-            float CB = (mid_mid)+(mid_right – mid_left)*(x_lerp)+(mid_left - (2*mid_mid)+mid_right)*pow(x_lerp,2);
-            float CC = (bot_mid)+(bot_right – mid_left)*(x_lerp)+(bot_left - (2*bot_mid)+bot_right)*pow(x_lerp,2);
-            float  image_grad_x =  dB_x +0.5* (dC_x - dA_x)*y_lerp + 0.5*(dA_x + 2*dB_x + dC_x)*(pow(y_lerp,2));
-            float image_grad_y = 0.5*(CC - CA) + (CA + 2*CB +CC)*(y_lerp);
+            float CA = top_mid + (top_right - top_left) * x_lerp + (top_left - (2 * top_mid) + top_right) * x_lerp * x_lerp;
+            float CB = mid_mid + (mid_right – mid_left) * x_lerp + (mid_left - (2 * mid_mid) + mid_right) * x_lerp * x_lerp;
+            float CC = bot_mid + (bot_right – mid_left) * x_lerp + (bot_left - (2 * bot_mid) + bot_right) * x_lerp * x_lerp;
+            float image_grad_x = dB_x +0.5 * (dC_x - dA_x) * y_lerp + 0.5 * (dA_x + 2 * dB_x + dC_x) * y_lerp * y_lerp;
+            float image_grad_y = 0.5 * (CC - CA) + (CA + 2 * CB + CC) * (y_lerp);
 
 
 
