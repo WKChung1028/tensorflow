@@ -290,10 +290,10 @@ struct CropAndResizeQuad<CPUDevice, T> {
               const float bot_right(static_cast<float>(
                   image(b_in, bot_mid_y, right_mid_x, d)));
       
-              const float CA = (top_mid)+(top_right - top_left)*(x_lerp)+(top_left - (2*top_mid)+top_right)*pow(x_lerp,2);
-              const float CB = (mid_mid)+(mid_right – mid_left)*(x_lerp)+(mid_left - (2*mid_mid)+mid_right)*pow(x_lerp,2);
-              const float CC =(bot_mid)+(bot_right – mid_left)*(x_lerp)+(bot_left - (2*bot_mid)+bot_right)*pow(x_lerp,2);
-              crops(b,y,x,d) = (CB)+(CC– CA)*(y_lerp)+(CA - (2*CB)+CC)*pow(y_lerp,2);
+              const float CA = top_mid + (top_right - top_left) * x_lerp + (top_left - (2 * top_mid) + top_right) * lerp_x * lerp_x;
+              const float CB = mid_mid + (mid_right – mid_left) * x_lerp + (mid_left - (2 * mid_mid) + mid_right) * lerp_x * lerp_x;
+              const float CC = bot_mid + (bot_right – mid_left) * x_lerp + (bot_left - (2 * bot_mid) + bot_right) * lerp_x * lerp_x;
+              crops(b,y,x,d) = CB + (CC– CA) * y_lerp + (CA - (2 * CB) + CC) * y_lerp * y_lerp;
 
             }
           }
