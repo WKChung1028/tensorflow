@@ -141,7 +141,7 @@ tf_kernel_library(
         "concat_lib.h",
         "concat_lib_cpu.h",
     ],
-    gpu_srcs = [
+    gpu_srcs = [q
         "concat_lib_gpu_impl.cu.cc",
         "concat_lib.h",
         "cuda_device_array.h",
@@ -1974,7 +1974,6 @@ cc_library(
         ":attention_ops",
         ":colorspace_op",
         ":crop_and_resize_op",
-        ":crop_and_resize_quad_op",
         ":decode_bmp_op",
         ":decode_image_op",
         ":draw_bounding_box_op",
@@ -2044,12 +2043,6 @@ tf_kernel_library(
 tf_kernel_library(
     name = "crop_and_resize_op",
     prefix = "crop_and_resize_op",
-    deps = IMAGE_DEPS,
-)
-
-tf_kernel_library(
-    name = "crop_and_resize_quad_op",
-    prefix = "crop_and_resize_quad_op",
     deps = IMAGE_DEPS,
 )
 
@@ -2202,7 +2195,6 @@ tf_cc_tests(
         "adjust_contrast_op_test.cc",
         "colorspace_op_test.cc",
         "crop_and_resize_op_test.cc",
-        "crop_and_resize_quad_op_test",
         "non_max_suppression_op_test.cc",
         "resize_area_op_test.cc",
         "resize_bicubic_op_test.cc",
@@ -4834,9 +4826,6 @@ filegroup(
         "conv_ops_fused.cc",
         "conv_ops_using_gemm.cc",
         "crop_and_resize_op.cc",
-        "crop_and_resize_op.h",
-        "crop_and_resize_quad_op.cc",
-        "crop_and_resize_quad_op.h",
         "cwise_op_abs.cc",
         "cwise_op_add_1.cc",
         "cwise_op_add_2.cc",
