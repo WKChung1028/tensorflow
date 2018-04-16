@@ -80,37 +80,71 @@ __global__ void CropAndResizeKernel(
       continue;
     }
 
-    const int top_y_index = floorf(in_y);
-    const int bottom_y_index = ceilf(in_y);
-    const float y_lerp = in_y - top_y_index;
+	const int mid_y_index = floorf(in_y);
+	const int top_y_index = floorf(in_y) - 1;
+	const int bot_y_index = ceilf(in_y);
+	const float y_lerp = in_y - mid_y_index;
 
-    const int left_x_index = floorf(in_x);
-    const int right_x_index = ceilf(in_x);
-    const float x_lerp = in_x - left_x_index;
+	const int mid_x_index = floorf(in_x);
+	const int left_x_index = floor(in_x) - 1;
+	const int right_x_index = ceilf(in_x);
+	const float x_lerp = in_x - mid_x_index;
 
     const float top_left(static_cast<float>(
         image_ptr[((b_in * image_height + top_y_index) * image_width +
                    left_x_index) *
                       depth +
                   d]));
+	onst float top_mid(static_cast<float>(
+		image_ptr[((b_in * image_height + top_y_index) * image_width +
+			mid_x_index) *
+		depth +
+		d]));
     const float top_right(static_cast<float>(
         image_ptr[((b_in * image_height + top_y_index) * image_width +
                    right_x_index) *
                       depth +
                   d]));
-    const float bottom_left(static_cast<float>(
-        image_ptr[((b_in * image_height + bottom_y_index) * image_width +
-                   left_x_index) *
-                      depth +
-                  d]));
-    const float bottom_right(static_cast<float>(
-        image_ptr[((b_in * image_height + bottom_y_index) * image_width +
-                   right_x_index) *
-                      depth +
-                  d]));
-    const float top = top_left + (top_right - top_left) * x_lerp;
-    const float bottom = bottom_left + (bottom_right - bottom_left) * x_lerp;
-    crops_ptr[out_idx] = top + (bottom - top) * y_lerp;
+
+	const float mid_left(static_cast<float>(
+		image_ptr[((b_in * image_height + mid_y_index) * image_width +
+			left_x_index) *
+		depth +
+		d]));
+	onst float mid_mid(static_cast<float>(
+		image_ptr[((b_in * image_height + mid_y_index) * image_width +
+			mid_x_index) *
+		depth +
+		d]));
+	const float mid_right(static_cast<float>(
+		image_ptr[((b_in * image_height + mid_y_index) * image_width +
+			right_x_index) *
+		depth +
+		d]));
+
+	const float bot_left(static_cast<float>(
+		image_ptr[((b_in * image_height + bot_y_index) * image_width +
+			left_x_index) *
+		depth +
+		d]));
+	onst float bot_mid(static_cast<float>(
+		image_ptr[((b_in * image_height + bot_y_index) * image_width +
+			mid_x_index) *
+		depth +
+		d]));
+	const float bot_right(static_cast<float>(
+		image_ptr[((b_in * image_height + bot_y_index) * image_width +
+			right_x_index) *
+		depth +
+		d]));
+	const float CA = top_mid + (top_right - top_left) * x_lerp +
+		(top_left - 2 * top_mid + top_right) * 0.5 * x_lerp * x_lerp;
+	const float CB = mid_mid + (mid_right - mid_left) * x_lerp +
+		(mid_left - 2 * mid_mid + mid_right) * 0.5 * x_lerp * x_lerp;
+	const float CC = bot_mid + (bot_right - bot_left) * x_lerp +
+		(bot_left - 2 * bot_mid + bot_right) * 0.5 * x_lerp * x_lerp;
+    crops_ptr[out_idx] = CB + (CC - CA) * y_lerp +(CA - 2 * CB + CC) *
+		0.5 * y_lerp * y_lerp;
   }
 }
 
@@ -160,41 +194,75 @@ __global__ void CropAndResizeBackpropImageKernel(
       continue;
     }
 
-    const int top_y_index = floorf(in_y);
-    const int bottom_y_index = ceilf(in_y);
-    const float y_lerp = in_y - top_y_index;
+	const int mid_y_index = floorf(in_y);
+	const int top_y_index = floorf(in_y) - 1;
+	const int bot_y_index = ceilf(in_y);
+	const float y_lerp = in_y - mid_y_index;
 
-    const int left_x_index = floorf(in_x);
-    const int right_x_index = ceilf(in_x);
-    const float x_lerp = in_x - left_x_index;
+	const int mid_x_index = floorf(in_x);
+	const int left_x_index = floor(in_x) - 1;
+	const int right_x_index = ceilf(in_x);
+	const float x_lerp = in_x - mid_x_index;
 
-    const float dtop = (1 - y_lerp) * grads_ptr[out_idx];
+	const float dCA = 0.5 * y_lerp * (y_lerp - 1) * grads_ptr[out_idx];
     CudaAtomicAdd(
         grads_image_ptr +
             ((b_in * image_height + top_y_index) * image_width + left_x_index) *
                 depth +
             d,
-        static_cast<T>((1 - x_lerp) * dtop));
+        static_cast<T>(0.5 * x_lerp * (x_lerp - 1) * dCA));
     CudaAtomicAdd(grads_image_ptr +
                       ((b_in * image_height + top_y_index) * image_width +
-                       right_x_index) *
+                       mid_x_index) *
                           depth +
                       d,
-                  static_cast<T>(x_lerp * dtop));
+                  static_cast<T>((1 - x_lerp * x_lerp) * dCA));
+	CudaAtomicAdd(grads_image_ptr +
+		((b_in * image_height + top_y_index) * image_width +
+			bot_x_index) *
+		depth +
+		d,
+		static_cast<T>(0.5 * x_lerp * (x_lerp + 1) * dCA));
+	const float dCB = (1 - y_lerp * y_lerp) * grads_ptr[out_idx];
+	CudaAtomicAdd(
+		grads_image_ptr +
+		((b_in * image_height + mid_y_index) * image_width + left_x_index) *
+		depth +
+		d,
+		static_cast<T>(0.5 * x_lerp * (x_lerp - 1) * dCB));
+	CudaAtomicAdd(grads_image_ptr +
+		((b_in * image_height + mid_y_index) * image_width +
+			mid_x_index) *
+		depth +
+		d,
+		static_cast<T>((1 - x_lerp * x_lerp) * dCB));
+	CudaAtomicAdd(grads_image_ptr +
+		((b_in * image_height + mid_y_index) * image_width +
+			bot_x_index) *
+		depth +
+		d,
+		static_cast<T>(0.5 * x_lerp * (x_lerp + 1) * dCB));
 
-    const float dbottom = y_lerp * grads_ptr[out_idx];
-    CudaAtomicAdd(grads_image_ptr +
-                      ((b_in * image_height + bottom_y_index) * image_width +
-                       left_x_index) *
-                          depth +
-                      d,
-                  static_cast<T>((1 - x_lerp) * dbottom));
-    CudaAtomicAdd(grads_image_ptr +
-                      ((b_in * image_height + bottom_y_index) * image_width +
-                       right_x_index) *
-                          depth +
-                      d,
-                  static_cast<T>(x_lerp * dbottom));
+	const float dCC = 0.5 * y_lerp * (y_lerp + 1) * grads_ptr[out_idx];
+	CudaAtomicAdd(
+		grads_image_ptr +
+		((b_in * image_height + bot_y_index) * image_width + left_x_index) *
+		depth +
+		d,
+		static_cast<T>(0.5 * x_lerp * (x_lerp - 1) * dCC));
+	CudaAtomicAdd(grads_image_ptr +
+		((b_in * image_height + bot_y_index) * image_width +
+			mid_x_index) *
+		depth +
+		d,
+		static_cast<T>((1 - x_lerp * x_lerp) * dCC));
+	CudaAtomicAdd(grads_image_ptr +
+		((b_in * image_height + bot_y_index) * image_width +
+			bot_x_index) *
+		depth +
+		d,
+		static_cast<T>(0.5 * x_lerp * (x_lerp + 1) * dCC));
+
   }
 }
 
@@ -250,40 +318,76 @@ __global__ void CropAndResizeBackpropBoxesKernel(
       continue;
     }
 
-    const int top_y_index = floorf(in_y);
-    const int bottom_y_index = ceilf(in_y);
-    const float y_lerp = in_y - top_y_index;
+	const int mid_y_index = floorf(in_y);
+	const int top_y_index = floorf(in_y) - 1;
+	const int bot_y_index = ceilf(in_y);
+	const float y_lerp = in_y - mid_y_index;
 
-    const int left_x_index = floorf(in_x);
-    const int right_x_index = ceilf(in_x);
-    const float x_lerp = in_x - left_x_index;
+	const int mid_x_index = floorf(in_x);
+	const int left_x_index = floor(in_x) - 1;
+	const int right_x_index = ceilf(in_x);
+	const float x_lerp = in_x - mid_x_index;
 
     const float top_left(static_cast<float>(
         image_ptr[((b_in * image_height + top_y_index) * image_width +
                    left_x_index) *
                       depth +
                   d]));
+	const float top_left(static_cast<float>(
+		image_ptr[((b_in * image_height + top_y_index) * image_width +
+			mid_x_index) *
+		depth +
+		d]));
     const float top_right(static_cast<float>(
         image_ptr[((b_in * image_height + top_y_index) * image_width +
                    right_x_index) *
                       depth +
                   d]));
-    const float bottom_left(static_cast<float>(
-        image_ptr[((b_in * image_height + bottom_y_index) * image_width +
-                   left_x_index) *
-                      depth +
-                  d]));
-    const float bottom_right(static_cast<float>(
-        image_ptr[((b_in * image_height + bottom_y_index) * image_width +
-                   right_x_index) *
-                      depth +
-                  d]));
+
+	const float top_left(static_cast<float>(
+		image_ptr[((b_in * image_height + mid_y_index) * image_width +
+			left_x_index) *
+		depth +
+		d]));
+	const float top_left(static_cast<float>(
+		image_ptr[((b_in * image_height + mid_y_index) * image_width +
+			mid_x_index) *
+		depth +
+		d]));
+	const float top_right(static_cast<float>(
+		image_ptr[((b_in * image_height + mid_y_index) * image_width +
+			right_x_index) *
+		depth +
+		d]));
+	const float top_left(static_cast<float>(
+		image_ptr[((b_in * image_height + bot_y_index) * image_width +
+			left_x_index) *
+		depth +
+		d]));
+	const float top_left(static_cast<float>(
+		image_ptr[((b_in * image_height + bot_y_index) * image_width +
+			mid_x_index) *
+		depth +
+		d]));
+	const float top_right(static_cast<float>(
+		image_ptr[((b_in * image_height + bot_y_index) * image_width +
+			right_x_index) *
+		depth +
+		d]));
 
     // Compute the image gradient.
-    float image_grad_y = (1 - x_lerp) * (bottom_left - top_left) +
-                         x_lerp * (bottom_right - top_right);
-    float image_grad_x = (1 - y_lerp) * (top_right - top_left) +
-                         y_lerp * (bottom_right - bottom_left);
+    float image_grad_y = (0.5 + y_lerp) * (bot_mid + (bot_right - bot_left) *
+		x_lerp + (bot_left - 2 * bot_mid + bot_right) * 0.5 * x_lerp * x_lerp) +
+		(y_lerp - 0.5)*(top_mid + (top_right - top_left) * x_lerp +
+		(top_left - 2 * top_mid + top_right) * 0.5 * x_lerp * x_lerp) -
+			(2 * y_lerp) * (mid_mid + (mid_right - mid_left) * x_lerp +
+		(mid_left - 2 * mid_mid + mid_right) * 0.5 * x_lerp * x_lerp);
+    float image_grad_x = (1 + y_lerp * y_lerp) *
+		(0.5 * (mid_right - mid_left) + x_lerp * (mid_left - 2 * mid_mid + mid_right)) +
+		(y_lerp * (0.5 + y_lerp)) *
+		(0.5 * (bot_right - bot_left) + x_lerp * (bot_left - 2 * bot_mid + bot_right)) +
+		(0.5 * y_lerp * (y_lerp - 1))*
+		(0.5 * (top_right - top_left) + x_lerp * (top_left - 2 * top_mid + top_right));
     // Modulate the image gradient with the incoming gradient.
     const float top_grad = grads_ptr[out_idx];
     image_grad_y *= top_grad;
