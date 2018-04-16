@@ -14,7 +14,7 @@ limitations under the License.
 ==============================================================================*/
 
 // See docs in ../ops/image_ops.cc
-//WK:Import header files..keep
+
 #define EIGEN_USE_THREADS
 
 #include "tensorflow/core/kernels/crop_and_resize_op.h"
@@ -33,7 +33,7 @@ limitations under the License.
 #include "tensorflow/core/platform/logging.h"
 #include "tensorflow/core/platform/types.h"
 #include "tensorflow/core/util/work_sharder.h"
-//WK: Use this if got use gpu...keep
+
 #if GOOGLE_CUDA
 #include "tensorflow/core/common_runtime/gpu/gpu_event_mgr.h"
 #include "tensorflow/core/platform/cuda.h"
@@ -41,15 +41,15 @@ limitations under the License.
 
 using ::perftools::gputools::cuda::ScopedActivateExecutorContext;
 #endif  // GOOGLE_CUDA
-//WK: use for tensorflow(custom for tensorflow , so will see tensorflow ::  
+
 namespace tensorflow {
-//WK:what this doing???
+
 typedef Eigen::ThreadPoolDevice CPUDevice;
 typedef Eigen::GpuDevice GPUDevice;
 using Callback = std::function<void()>;
 
 namespace {
-//WK:Use to check status on inputs, if not as required , return errors---keep
+
 static inline Status ParseAndCheckBoxSizes(const Tensor& boxes,
                                            const Tensor& box_index,
                                            int* num_boxes) {
@@ -113,8 +113,8 @@ class CropAndResizeOp : public AsyncOpKernel {
       : AsyncOpKernel(context) {
     string method;
     OP_REQUIRES_OK(context, context->GetAttr("method", &method));
-    OP_REQUIRES(context, method == "bilinear",
-                errors::InvalidArgument("method must be 'bilinear'", method));
+    OP_REQUIRES(context, method == "biquadratic",
+                errors::InvalidArgument("method must be 'biquadratic'", method));
     OP_REQUIRES_OK(context, context->GetAttr("extrapolation_value",
                                              &extrapolation_value_));
   }
@@ -248,9 +248,10 @@ struct CropAndResize<CPUDevice, T> {
             }
             continue;
           }
-          const int top_y_index = floorf(in_y);
-          const int bottom_y_index = ceilf(in_y);
-          const float y_lerp = in_y - top_y_index;
+          const int mid_y_index = floorf(in_y);
+		  const int top_y_index = floorf(in_y) - 1;
+		  const int bot_y_index = ceilf(in_y);
+          const float y_lerp = in_y - mid_y_index;
 
           for (int x = 0; x < crop_width; ++x) {
             const float in_x = (crop_width > 1)
@@ -262,23 +263,41 @@ struct CropAndResize<CPUDevice, T> {
               }
               continue;
             }
-            const int left_x_index = floorf(in_x);
-            const int right_x_index = ceilf(in_x);
-            const float x_lerp = in_x - left_x_index;
+            const int mid_x_index = floorf(in_x);
+            const int left_x_index = floor(in_x) - 1;
+			const int right_x_index = ceilf(in_x);
+            const float x_lerp = in_x - mid_x_index;
 
             for (int d = 0; d < depth; ++d) {
               const float top_left(static_cast<float>(
                   image(b_in, top_y_index, left_x_index, d)));
+			  const float top_mid(static_cast<float>(
+				  image(b_in, top_y_index, mid_x_index, d)));
               const float top_right(static_cast<float>(
                   image(b_in, top_y_index, right_x_index, d)));
-              const float bottom_left(static_cast<float>(
-                  image(b_in, bottom_y_index, left_x_index, d)));
-              const float bottom_right(static_cast<float>(
-                  image(b_in, bottom_y_index, right_x_index, d)));
-              const float top = top_left + (top_right - top_left) * x_lerp;
-              const float bottom =
-                  bottom_left + (bottom_right - bottom_left) * x_lerp;
-              crops(b, y, x, d) = top + (bottom - top) * y_lerp;
+
+			  const float mid_left(static_cast<float>(
+				  image(b_in, mid_y_index, left_x_index, d)));
+			  const float mid_mid(static_cast<float>(
+				  image(b_in, mid_y_index, mid_x_index, d)));
+			  const float top_right(static_cast<float>(
+				  image(b_in, mid_y_index, right_x_index, d)));
+
+              const float bot_left(static_cast<float>(
+                  image(b_in, bot_y_index, left_x_index, d)));
+			  const float bot_mid(static_cast<float>(
+				  image(b_in, bot_y_index, mid_x_index, d)));
+              const float bot_right(static_cast<float>(
+                  image(b_in, bot_y_index, right_x_index, d)));
+
+			  const float CA = top_mid + (top_right - top_left) * x_lerp + 
+				  (top_left - 2 * top_mid + top_right) * 0.5 * x_lerp * x_lerp;
+              const float CB = mid_mid + (mid_right - mid_left) * x_lerp +
+				  (mid_left - 2 * mid_mid + mid_right) * 0.5 * x_lerp * x_lerp;
+			  const float CC = bot_mid + (bot_right - bot_left) * x_lerp +
+				  (bot_left - 2 * bot_mid + bot_right) * 0.5 * x_lerp * x_lerp;
+              crops(b, y, x, d) = CB + (CC -CA) * y_lerp + 
+				  (CA - 2*CB + CC) * 0.5 * y_lerp * y_lerp;
             }
           }
         }
@@ -287,10 +306,10 @@ struct CropAndResize<CPUDevice, T> {
 
     // A rough estimation of the cost for each cropped box.
     const double cost_per_pixel =
-        depth * (Eigen::TensorOpCost::AddCost<float>() * 6 +
-                 Eigen::TensorOpCost::MulCost<float>() * 3 +
-                 Eigen::TensorOpCost::CastCost<T, float>() * 4) +
-        (Eigen::TensorOpCost::AddCost<float>() * 2 +
+        depth * (Eigen::TensorOpCost::AddCost<float>() * 20 +
+                 Eigen::TensorOpCost::MulCost<float>() * 20 +
+                 Eigen::TensorOpCost::CastCost<T, float>() * 9) +
+        (Eigen::TensorOpCost::AddCost<float>() * 4 +
          Eigen::TensorOpCost::AddCost<float>() * 3);
     const double cost_per_box = crop_height * crop_width * cost_per_pixel;
 
@@ -312,8 +331,8 @@ class CropAndResizeGradImageOp : public AsyncOpKernel {
       : AsyncOpKernel(context) {
     string method;
     OP_REQUIRES_OK(context, context->GetAttr("method", &method));
-    OP_REQUIRES(context, method == "bilinear",
-                errors::InvalidArgument("method must be 'bilinear'", method));
+    OP_REQUIRES(context, method == "biquadratic",
+                errors::InvalidArgument("method must be 'biquadratic'", method));
   }
 
   void ComputeAsync(OpKernelContext* context, DoneCallback done) override {
@@ -438,9 +457,11 @@ struct CropAndResizeBackpropImage<CPUDevice, T> {
         if (in_y < 0 || in_y > image_height - 1) {
           continue;
         }
-        const int top_y_index = floorf(in_y);
-        const int bottom_y_index = ceilf(in_y);
-        const float y_lerp = in_y - top_y_index;
+
+		const int mid_y_index = floorf(in_y);
+		const int top_y_index = floorf(in_y) - 1;
+		const int bot_y_index = ceilf(in_y);
+		const float y_lerp = in_y - mid_y_index;
 
         for (int x = 0; x < crop_width; ++x) {
           const float in_x = (crop_width > 1)
@@ -449,21 +470,35 @@ struct CropAndResizeBackpropImage<CPUDevice, T> {
           if (in_x < 0 || in_x > image_width - 1) {
             continue;
           }
-          const int left_x_index = floorf(in_x);
-          const int right_x_index = ceilf(in_x);
-          const float x_lerp = in_x - left_x_index;
+		  const int mid_x_index = floorf(in_x);
+		  const int left_x_index = floor(in_x) - 1;
+		  const int right_x_index = ceilf(in_x);
+		  const float x_lerp = in_x - mid_x_index;
 
           for (int d = 0; d < depth; ++d) {
-            const float dtop = (1 - y_lerp) * grads(b, y, x, d);
+            const float dCA = 0.5 * y_lerp * (y_lerp - 1) * grads(b, y, x, d);
+			const float dCB = (1 - y_lerp * y_lerp) * grads(b, y, x, d);
+			const float dCC = 0.5 * y_lerp * (y_lerp + 1) * grads(b, y, x, d);
             grads_image(b_in, top_y_index, left_x_index, d) +=
-                static_cast<T>((1 - x_lerp) * dtop);
-            grads_image(b_in, top_y_index, right_x_index, d) +=
-                static_cast<T>(x_lerp * dtop);
-            const float dbottom = y_lerp * grads(b, y, x, d);
-            grads_image(b_in, bottom_y_index, left_x_index, d) +=
-                static_cast<T>((1 - x_lerp) * dbottom);
-            grads_image(b_in, bottom_y_index, right_x_index, d) +=
-                static_cast<T>(x_lerp * dbottom);
+                static_cast<T>(0.5 * x_lerp * (x_lerp - 1) * dCA);
+			grads_image(b_in, top_y_index, mid_x_index, d) +=
+				static_cast<T>((1 - x_lerp * x_lerp) * dCA);
+			grads_image(b_in, top_y_index, right_x_index, d) +=
+				static_cast<T>(0.5 * x_lerp * (x_lerp + 1) * dCA);
+
+			grads_image(b_in, mid_y_index, left_x_index, d) +=
+				static_cast<T>(0.5 * x_lerp * (x_lerp - 1) * dCB);
+			grads_image(b_in, mid_y_index, mid_x_index, d) +=
+				static_cast<T>((1 - x_lerp * x_lerp) * dCB);
+			grads_image(b_in, mid_y_index, right_x_index, d) +=
+				static_cast<T>(0.5 * x_lerp * (x_lerp + 1) * dCB);
+
+			grads_image(b_in, bot_y_index, left_x_index, d) +=
+				static_cast<T>(0.5 * x_lerp * (x_lerp - 1) * dCC);
+			grads_image(b_in, bot_y_index, mid_x_index, d) +=
+				static_cast<T>((1 - x_lerp * x_lerp) * dCC);
+			grads_image(b_in, bot_y_index, right_x_index, d) +=
+				static_cast<T>(0.5 * x_lerp * (x_lerp + 1) * dCC);
           }
         }
       }
@@ -481,8 +516,8 @@ class CropAndResizeGradBoxesOp : public AsyncOpKernel {
       : AsyncOpKernel(context) {
     string method;
     OP_REQUIRES_OK(context, context->GetAttr("method", &method));
-    OP_REQUIRES(context, method == "bilinear",
-                errors::InvalidArgument("method must be 'bilinear'", method));
+    OP_REQUIRES(context, method == "biquadratic",
+                errors::InvalidArgument("method must be 'biquadratic'", method));
   }
 
   void ComputeAsync(OpKernelContext* context, DoneCallback done) override {
@@ -610,9 +645,10 @@ struct CropAndResizeBackpropBoxes<CPUDevice, T> {
         if (in_y < 0 || in_y > image_height - 1) {
           continue;
         }
-        const int top_y_index = floorf(in_y);
-        const int bottom_y_index = ceilf(in_y);
-        const float y_lerp = in_y - top_y_index;
+		const int mid_y_index = floorf(in_y);
+		const int top_y_index = floorf(in_y) - 1;
+		const int bot_y_index = ceilf(in_y);
+		const float y_lerp = in_y - mid_y_index;
 
         for (int x = 0; x < crop_width; ++x) {
           const float in_x = (crop_width > 1)
@@ -621,24 +657,45 @@ struct CropAndResizeBackpropBoxes<CPUDevice, T> {
           if (in_x < 0 || in_x > image_width - 1) {
             continue;
           }
-          const int left_x_index = floorf(in_x);
-          const int right_x_index = ceilf(in_x);
-          const float x_lerp = in_x - left_x_index;
+
+		  const int mid_x_index = floorf(in_x);
+		  const int left_x_index = floor(in_x) - 1;
+		  const int right_x_index = ceilf(in_x);
+		  const float x_lerp = in_x - mid_x_index;
 
           for (int d = 0; d < depth; ++d) {
-            const float top_left(
-                static_cast<float>(image(b_in, top_y_index, left_x_index, d)));
-            const float top_right(
-                static_cast<float>(image(b_in, top_y_index, right_x_index, d)));
-            const float bottom_left(static_cast<float>(
-                image(b_in, bottom_y_index, left_x_index, d)));
-            const float bottom_right(static_cast<float>(
-                image(b_in, bottom_y_index, right_x_index, d)));
+			const float top_left(
+				static_cast<float>(image(b_in, top_y_index, left_x_index, d)));
+			const float top_mid(
+				static_cast<float>(image(b_in, top_y_index, mid_x_index, d)));
+			const float top_right(
+				static_cast<float>(image(b_in, top_y_index, right_x_index, d)));
+			const float mid_left(
+				static_cast<float>(image(b_in, mid_y_index, left_x_index, d)));
+			const float mid_mid(
+				static_cast<float>(image(b_in, mid_y_index, mid_x_index, d)));
+			const float top_right(
+				static_cast<float>(image(b_in, mid_y_index, right_x_index, d)));
+			const float bot_left(
+				static_cast<float>(image(b_in, bot_y_index, left_x_index, d)));
+			const float bot_mid(
+				static_cast<float>(image(b_in, bot_y_index, mid_x_index, d)));
+			const float bot_right(
+				static_cast<float>(image(b_in, bot_y_index, right_x_index, d)));
             // Compute the image gradient.
-            float image_grad_y = (1 - x_lerp) * (bottom_left - top_left) +
-                                 x_lerp * (bottom_right - top_right);
-            float image_grad_x = (1 - y_lerp) * (top_right - top_left) +
-                                 y_lerp * (bottom_right - bottom_left);
+			float image_grad_y = 
+				(0.5 + y_lerp) * (bot_mid + (bot_right - bot_left) *
+				x_lerp + (bot_left - 2 * bot_mid + bot_right) * 0.5 * x_lerp * x_lerp) +
+				(y_lerp - 0.5)*(top_mid + (top_right - top_left) * x_lerp +
+				(top_left - 2 * top_mid + top_right) * 0.5 * x_lerp * x_lerp) - 
+				(2 * y_lerp) * (mid_mid + (mid_right - mid_left) * x_lerp + 
+				(mid_left - 2 * mid_mid + mid_right) * 0.5 * x_lerp * x_lerp);
+            float image_grad_x = (1 + y_lerp * y_lerp) *
+				(0.5 * (mid_right - mid_left) + x_lerp * (mid_left - 2 * mid_mid + mid_right)) + 
+				(y_lerp * (0.5 + y_lerp)) * 
+				(0.5 * (bot_right - bot_left) + x_lerp * (bot_left - 2 * bot_mid + bot_right)) + 
+				(0.5 * y_lerp * (y_lerp - 1))*
+				(0.5 * (top_right - top_left) + x_lerp * (top_left - 2 * top_mid + top_right));
             // Modulate the image gradient with the incoming gradient.
             const float top_grad = grads(b, y, x, d);
             image_grad_y *= top_grad;
