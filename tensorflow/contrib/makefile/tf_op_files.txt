@@ -203,7 +203,6 @@ tensorflow/core/kernels/cwise_op_add_1.cc
 tensorflow/core/kernels/cwise_op_abs.cc
 tensorflow/core/kernels/ctc_decoder_ops.cc
 tensorflow/core/kernels/crop_and_resize_op.cc
-tensorflow/core/kernels/crop_and_resize_quad_op.cc
 tensorflow/core/kernels/conv_ops_using_gemm.cc
 tensorflow/core/kernels/conv_ops_fused.cc
 tensorflow/core/kernels/conv_ops.cc
