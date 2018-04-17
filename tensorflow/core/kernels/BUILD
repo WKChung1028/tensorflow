@@ -141,7 +141,7 @@ tf_kernel_library(
         "concat_lib.h",
         "concat_lib_cpu.h",
     ],
-    gpu_srcs = [q
+    gpu_srcs = [
         "concat_lib_gpu_impl.cu.cc",
         "concat_lib.h",
         "cuda_device_array.h",
