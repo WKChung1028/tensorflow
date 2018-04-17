@@ -219,7 +219,7 @@ __global__ void CropAndResizeBackpropImageKernel(
                   static_cast<T>((1 - x_lerp * x_lerp) * dCA));
 	CudaAtomicAdd(grads_image_ptr +
 		((b_in * image_height + top_y_index) * image_width +
-			bot_x_index) *
+			right_x_index) *
 		depth +
 		d,
 		static_cast<T>(0.5 * x_lerp * (x_lerp + 1) * dCA));
@@ -238,7 +238,7 @@ __global__ void CropAndResizeBackpropImageKernel(
 		static_cast<T>((1 - x_lerp * x_lerp) * dCB));
 	CudaAtomicAdd(grads_image_ptr +
 		((b_in * image_height + mid_y_index) * image_width +
-			bot_x_index) *
+			right_x_index) *
 		depth +
 		d,
 		static_cast<T>(0.5 * x_lerp * (x_lerp + 1) * dCB));
@@ -258,7 +258,7 @@ __global__ void CropAndResizeBackpropImageKernel(
 		static_cast<T>((1 - x_lerp * x_lerp) * dCC));
 	CudaAtomicAdd(grads_image_ptr +
 		((b_in * image_height + bot_y_index) * image_width +
-			bot_x_index) *
+			right_x_index) *
 		depth +
 		d,
 		static_cast<T>(0.5 * x_lerp * (x_lerp + 1) * dCC));
@@ -333,7 +333,7 @@ __global__ void CropAndResizeBackpropBoxesKernel(
                    left_x_index) *
                       depth +
                   d]));
-	const float top_left(static_cast<float>(
+	const float top_mid(static_cast<float>(
 		image_ptr[((b_in * image_height + top_y_index) * image_width +
 			mid_x_index) *
 		depth +
@@ -344,32 +344,32 @@ __global__ void CropAndResizeBackpropBoxesKernel(
                       depth +
                   d]));
 
-	const float top_left(static_cast<float>(
+	const float mid_left(static_cast<float>(
 		image_ptr[((b_in * image_height + mid_y_index) * image_width +
 			left_x_index) *
 		depth +
 		d]));
-	const float top_left(static_cast<float>(
+	const float mid_mid(static_cast<float>(
 		image_ptr[((b_in * image_height + mid_y_index) * image_width +
 			mid_x_index) *
 		depth +
 		d]));
-	const float top_right(static_cast<float>(
+	const float mid_right(static_cast<float>(
 		image_ptr[((b_in * image_height + mid_y_index) * image_width +
 			right_x_index) *
 		depth +
 		d]));
-	const float top_left(static_cast<float>(
+	const float bot_left(static_cast<float>(
 		image_ptr[((b_in * image_height + bot_y_index) * image_width +
 			left_x_index) *
 		depth +
 		d]));
-	const float top_left(static_cast<float>(
+	const float bot_mid(static_cast<float>(
 		image_ptr[((b_in * image_height + bot_y_index) * image_width +
 			mid_x_index) *
 		depth +
 		d]));
-	const float top_right(static_cast<float>(
+	const float bot_right(static_cast<float>(
 		image_ptr[((b_in * image_height + bot_y_index) * image_width +
 			right_x_index) *
 		depth +
