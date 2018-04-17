@@ -95,7 +95,7 @@ __global__ void CropAndResizeKernel(
                    left_x_index) *
                       depth +
                   d]));
-	onst float top_mid(static_cast<float>(
+    const float top_mid(static_cast<float>(
 		image_ptr[((b_in * image_height + top_y_index) * image_width +
 			mid_x_index) *
 		depth +
@@ -111,7 +111,7 @@ __global__ void CropAndResizeKernel(
 			left_x_index) *
 		depth +
 		d]));
-	onst float mid_mid(static_cast<float>(
+	const float mid_mid(static_cast<float>(
 		image_ptr[((b_in * image_height + mid_y_index) * image_width +
 			mid_x_index) *
 		depth +
@@ -127,7 +127,7 @@ __global__ void CropAndResizeKernel(
 			left_x_index) *
 		depth +
 		d]));
-	onst float bot_mid(static_cast<float>(
+	const float bot_mid(static_cast<float>(
 		image_ptr[((b_in * image_height + bot_y_index) * image_width +
 			mid_x_index) *
 		depth +
