@@ -280,7 +280,7 @@ struct CropAndResize<CPUDevice, T> {
 				  image(b_in, mid_y_index, left_x_index, d)));
 			  const float mid_mid(static_cast<float>(
 				  image(b_in, mid_y_index, mid_x_index, d)));
-			  const float top_right(static_cast<float>(
+			  const float mid_right(static_cast<float>(
 				  image(b_in, mid_y_index, right_x_index, d)));
 
               const float bot_left(static_cast<float>(
