@@ -289,13 +289,14 @@ struct CropAndResize<CPUDevice, T> {
 				  image(b_in, bot_y_index, mid_x_index, d)));
               const float bot_right(static_cast<float>(
                   image(b_in, bot_y_index, right_x_index, d)));
-
-			  const float CA = top_mid + (top_right - top_left) * 0.5 * x_lerp + 
-				  (top_left - 2 * top_mid + top_right) * 0.5 * x_lerp * x_lerp;
-              const float CB = mid_mid + (mid_right - mid_left) * 0.5 * x_lerp +
-				  (mid_left - 2 * mid_mid + mid_right) * 0.5 * x_lerp * x_lerp;
-			  const float CC = bot_mid + (bot_right - bot_left) * 0.5 * x_lerp +
-				  (bot_left - 2 * bot_mid + bot_right) * 0.5 * x_lerp * x_lerp;
+			  const float half_x = 0.5 * x_lerp;
+			  const float squad_x = 0.5 * x_lerp * x_lerp;
+			  const float CA = top_mid + (top_right - top_left) * half_x + 
+				  (top_left - 2 * top_mid + top_right) * squad_x;
+              const float CB = mid_mid + (mid_right - mid_left) * half_x +
+				  (mid_left - 2 * mid_mid + mid_right) * squad_x;
+			  const float CC = bot_mid + (bot_right - bot_left) * half_x +
+				  (bot_left - 2 * bot_mid + bot_right) * squad_x;
               crops(b, y, x, d) = CB + (CC -CA) * 0.5 * y_lerp + 
 				  (CA - 2 * CB + CC) * 0.5 * y_lerp * y_lerp;
             }
@@ -307,7 +308,7 @@ struct CropAndResize<CPUDevice, T> {
     // A rough estimation of the cost for each cropped box.
     const double cost_per_pixel =
         depth * (Eigen::TensorOpCost::AddCost<float>() * 20 +
-                 Eigen::TensorOpCost::MulCost<float>() * 24 +
+                 Eigen::TensorOpCost::MulCost<float>() * 18 +
                  Eigen::TensorOpCost::CastCost<T, float>() * 9) +
         (Eigen::TensorOpCost::AddCost<float>() * 4 +
          Eigen::TensorOpCost::AddCost<float>() * 3);
