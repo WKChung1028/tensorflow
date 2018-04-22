@@ -694,7 +694,7 @@ struct CropAndResizeBackpropBoxes<CPUDevice, T> {
 
             float image_grad_x = (1 - y_lerp * y_lerp) *
 				(0.5 * (mid_right - mid_left) + x_lerp * (mid_left - 2 * mid_mid + mid_right)) + 
-				(0,5 * y_lerp * (1 + y_lerp)) * 
+				(0.5 * y_lerp * (1 + y_lerp)) * 
 				(0.5 * (bot_right - bot_left) + x_lerp * (bot_left - 2 * bot_mid + bot_right)) + 
 				(0.5 * y_lerp * (y_lerp - 1))*
 				(0.5 * (top_right - top_left) + x_lerp * (top_left - 2 * top_mid + top_right));
