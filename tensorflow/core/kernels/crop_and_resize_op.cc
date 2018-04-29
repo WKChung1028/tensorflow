@@ -113,8 +113,8 @@ class CropAndResizeOp : public AsyncOpKernel {
       : AsyncOpKernel(context) {
     string method;
     OP_REQUIRES_OK(context, context->GetAttr("method", &method));
-    OP_REQUIRES(context, method == "biquadratic",
-                errors::InvalidArgument("method must be 'biquadratic'", method));
+    OP_REQUIRES(context, method == "bilinear",
+                errors::InvalidArgument("method must be 'bilinear'", method));
     OP_REQUIRES_OK(context, context->GetAttr("extrapolation_value",
                                              &extrapolation_value_));
   }
@@ -332,8 +332,8 @@ class CropAndResizeGradImageOp : public AsyncOpKernel {
       : AsyncOpKernel(context) {
     string method;
     OP_REQUIRES_OK(context, context->GetAttr("method", &method));
-    OP_REQUIRES(context, method == "biquadratic",
-                errors::InvalidArgument("method must be 'biquadratic'", method));
+    OP_REQUIRES(context, method == "bilinear",
+                errors::InvalidArgument("method must be 'bilinear'", method));
   }
 
   void ComputeAsync(OpKernelContext* context, DoneCallback done) override {
@@ -517,8 +517,8 @@ class CropAndResizeGradBoxesOp : public AsyncOpKernel {
       : AsyncOpKernel(context) {
     string method;
     OP_REQUIRES_OK(context, context->GetAttr("method", &method));
-    OP_REQUIRES(context, method == "biquadratic",
-                errors::InvalidArgument("method must be 'biquadratic'", method));
+    OP_REQUIRES(context, method == "bilinear",
+                errors::InvalidArgument("method must be 'bilinear'", method));
   }
 
   void ComputeAsync(OpKernelContext* context, DoneCallback done) override {
